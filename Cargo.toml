@@ -19,6 +19,7 @@ panic-halt = "0.2.0"
 # cfg-if = "1.0.0"
 
 rtic = { version = "2.1.1", features = ["thumbv7-backend"] }
+systick-monotonic = "1.0"
 
 [dependencies.stm32h7xx-hal]
 version = "^0"
