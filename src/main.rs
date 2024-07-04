@@ -11,7 +11,11 @@
 // https://droogmic.github.io/microrust/getting-started/01.00.BUILD.html#build-3
 extern crate panic_halt;
 
-#[rtic::app(device = stm32h7xx_hal::stm32, peripherals = true)]
+#[rtic::app(
+    device = stm32h7xx_hal::stm32,
+    peripherals = true,
+    dispatchers = [FLASH]
+)]
 mod app {
     use stm32h7xx_hal::gpio::gpioc::{PC13};
     use stm32h7xx_hal::gpio::gpioe::{PE3};
@@ -70,7 +74,7 @@ mod app {
     }
 
     #[idle(local = [x: u32 = 0])]
-    fn idle(cx: idle::Context) -> ! {
+    fn idle(_cx: idle::Context) -> ! {
         // Locals in idle have lifetime 'static
         // let _x: &'static mut u32 = cx.local.x;
 
@@ -83,7 +87,9 @@ mod app {
         }
     }
 
+    /*
     #[task(priority = 1)]
     async fn foo(_: foo::Context) {
     }
+    */
 }
