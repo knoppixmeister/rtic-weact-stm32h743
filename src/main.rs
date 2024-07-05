@@ -94,6 +94,7 @@ mod app {
     let ld: PE3<Output<PushPull>> = gpioe.pe3.into_push_pull_output();
 
     blinking::spawn().ok();
+    printing::spawn().ok();
 
     (
       SharedResources {
