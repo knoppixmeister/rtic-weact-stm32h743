@@ -3,9 +3,6 @@
 #![no_std]
 #![no_main]
 
-// #[macro_use]
-// mod utilities;
-
 // release profile
 // #[cfg(not(debug_assertions))]
 // https://droogmic.github.io/microrust/getting-started/01.00.BUILD.html#build-3
