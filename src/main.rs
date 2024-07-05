@@ -46,13 +46,14 @@ mod app {
 
   #[shared]
   struct SharedResources {
-    tx: Tx<USART1>
+    tx: Tx<USART1>,
+    led: PE3<Output<PushPull>>,
   }
 
   #[local]
   struct LocalResources {
     button: PC13<Input>,
-    led: PE3<Output<PushPull>>,
+    // led: PE3<Output<PushPull>>,
   }
 
   #[init]
@@ -92,22 +93,27 @@ mod app {
 
     writeln!(tx, "Hello, world!").unwrap();
 
+    let ld: PE3<Output<PushPull>> = gpioe.pe3.into_push_pull_output();
+
+    blinking::spawn().ok();
+
     (
       SharedResources {
-        tx
+        tx,
+        led: ld
       },
       LocalResources {
         button,
-        led: gpioe.pe3.into_push_pull_output(),
+        // led: ld,
       }
     )
   }
 
-  #[task(binds = EXTI15_10, local = [button, led])]
+  #[task(binds = EXTI15_10, local = [button], shared = [tx, led])]
   fn button_click(ctx: button_click::Context) {
     // hprintln!("btn");
 
-    ctx.local.led.toggle();
+    // ctx.local.led.toggle();
 
     foo::spawn().unwrap();
 
@@ -144,6 +150,17 @@ mod app {
     });
 
     // hprintln!("Fooooo odofodfodofdofodfo");
+  }
+
+  #[task(priority = 1, shared=[tx, led])]
+  async fn blinking(mut ctx: blinking::Context) {
+    loop {
+      ctx.shared.led.lock(|led| {
+        led.toggle();
+      });
+
+      // Mono::delay(1000.millis()).await;
+    }
   }
   
 }
