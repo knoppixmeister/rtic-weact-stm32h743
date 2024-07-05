@@ -3,6 +3,9 @@
 #![no_std]
 #![no_main]
 
+use rtic::app;
+use rtic_monotonics::systick::prelude::*;
+
 // release profile
 // #[cfg(not(debug_assertions))]
 // https://droogmic.github.io/microrust/getting-started/01.00.BUILD.html#build-3
@@ -10,20 +13,24 @@ extern crate panic_halt;
 
 // use panic_semihosting as _;
 
-#[rtic::app(
+systick_monotonic!(Mono, 1000);
+
+#[app(
   device = stm32h7xx_hal::stm32,
   peripherals = true,
   dispatchers = [SPI1, FLASH]
 )]
 mod app {
+  use super::*; // looks like inject all imports from upper/parent namespace. Need for import/inject Mono object
+
   use stm32h7xx_hal::pac::USART1;
   use stm32h7xx_hal::{
-    pac,
+    // pac,
     prelude::*,
     serial::Tx
   };
 
-  use cortex_m_semihosting::hprintln;
+  // use cortex_m_semihosting::hprintln;
 
   use core::fmt::Write;
 
@@ -32,10 +39,12 @@ mod app {
   use stm32h7xx_hal::gpio::{Edge, ExtiPin, Input};
   use stm32h7xx_hal::gpio::{Output, PushPull};
 
+  /*
   use systick_monotonic::{
     fugit::{Duration, RateExtU32, TimerInstantU64},
     ExtU64, Systick,
   };
+  */
 
   // A monotonic timer to enable scheduling in RTIC
   // #[monotonic(binds = SysTick, default = true)]
@@ -57,6 +66,9 @@ mod app {
   fn init(mut ctx: init::Context) -> (SharedResources, LocalResources) {
     let pwr = ctx.device.PWR.constrain();
     let pwrcfg = pwr.freeze();
+
+    // Initialize the systick interrupt & obtain the token to prove that we did
+    Mono::start(ctx.core.SYST, 400_000_000); // default STM32F303 clock-rate is 36MHz
 
     // RCC
     let rcc = ctx.device.RCC.constrain();
@@ -156,7 +168,22 @@ mod app {
         led.toggle();
       });
 
-      // Mono::delay(1000.millis()).await;
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Blink ....").unwrap();
+      });
+
+      Mono::delay(1000.millis()).await;
+    }
+  }
+
+  #[task(priority = 3, shared=[tx])]
+  async fn printing(mut ctx: printing::Context) {
+    loop {
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Printing ....").unwrap();
+      });
+
+      Mono::delay((5*1000).millis()).await;
     }
   }
   
