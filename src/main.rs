@@ -4,7 +4,7 @@
 #![no_main]
 
 use rtic::app;
-use rtic_monotonics::systick::prelude::*;
+// use rtic_monotonics::systick::prelude::*;
 
 // release profile
 // #[cfg(not(debug_assertions))]
@@ -13,15 +13,20 @@ extern crate panic_halt;
 
 // use panic_semihosting as _;
 
-systick_monotonic!(Mono, 1000);
+// systick_monotonic!(Mono, 1000);
 
 #[app(
   device = stm32h7xx_hal::stm32,
   peripherals = true,
-  dispatchers = [SPI1, FLASH]
+  dispatchers = [SPI1, FLASH] // <--- number of dispatchers depends on how many different priorities of tasks has app.
+  // for every priority should be its own dispatcher 'name'/interrupt 
 )]
 mod app {
-  use super::*; // looks like inject all imports from upper/parent namespace. Need for import/inject Mono object
+  // use super::*; // looks like inject all imports from upper/parent namespace. Need for import/inject Mono object
+
+  use rtic_monotonics::systick::prelude::*;
+
+  systick_monotonic!(Mono, 1000);
 
   use stm32h7xx_hal::pac::USART1;
   use stm32h7xx_hal::{
@@ -57,7 +62,7 @@ mod app {
     let pwrcfg = pwr.freeze();
 
     // Initialize the systick interrupt & obtain the token to prove that we did
-    Mono::start(ctx.core.SYST, 400_000_000); // default STM32F303 clock-rate is 36MHz
+    Mono::start(ctx.core.SYST, 480_000_000); // default STM32F303 clock-rate is 36MHz
 
     // RCC
     let rcc = ctx.device.RCC.constrain();
@@ -95,6 +100,8 @@ mod app {
 
     blinking::spawn().ok();
     printing::spawn().ok();
+    task4::spawn().ok();
+    task5::spawn().ok();
 
     (
       SharedResources {
@@ -166,7 +173,7 @@ mod app {
     }
   }
 
-  #[task(priority = 3, shared=[tx])]
+  #[task(priority = 1, shared=[tx])]
   async fn printing(mut ctx: printing::Context) {
     loop {
       ctx.shared.tx.lock(|tx| {
@@ -176,5 +183,49 @@ mod app {
       Mono::delay((5*1000).millis()).await;
     }
   }
-  
+
+  #[task(priority = 2, shared = [tx])]
+  async fn task4(mut ctx: task4::Context) {
+    loop {
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Task 4  ....").unwrap();
+      });
+
+      Mono::delay((15*1000).millis()).await;
+    }
+  }
+
+  #[task(priority = 2, shared = [tx])]
+  async fn task5(mut ctx: task5::Context) {
+    loop {
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Task 5  ....").unwrap();
+      });
+
+      Mono::delay((20*1000).millis()).await;
+    }
+  }
+
+  #[task(priority = 2, shared = [tx])]
+  async fn task6(mut ctx: task6::Context) {
+    loop {
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Task 6  ....").unwrap();
+      });
+
+      Mono::delay((25*1000).millis()).await;
+    }
+  }
+
+  #[task(priority = 1, shared = [tx])]
+  async fn task7(mut ctx: task7::Context) {
+    loop {
+      ctx.shared.tx.lock(|tx| {
+        writeln!(tx, "Task 7  ....").unwrap();
+      });
+
+      Mono::delay((30*1000).millis()).await;
+    }
+  }
+
 }
