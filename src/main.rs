@@ -39,17 +39,6 @@ mod app {
   use stm32h7xx_hal::gpio::{Edge, ExtiPin, Input};
   use stm32h7xx_hal::gpio::{Output, PushPull};
 
-  /*
-  use systick_monotonic::{
-    fugit::{Duration, RateExtU32, TimerInstantU64},
-    ExtU64, Systick,
-  };
-  */
-
-  // A monotonic timer to enable scheduling in RTIC
-  // #[monotonic(binds = SysTick, default = true)]
-  // type MonotonicTick = Systick<500>; // 500 Hz / 2 ms granularity
-
   #[shared]
   struct SharedResources {
     tx: Tx<USART1>,
