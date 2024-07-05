@@ -23,7 +23,7 @@ mod app {
   use stm32h7xx_hal::{
     pac,
     prelude::*,
-    i2c,
+    serial::Tx
   };
 
   use cortex_m_semihosting::hprintln;
@@ -46,42 +46,14 @@ mod app {
 
   #[shared]
   struct SharedResources {
+    tx: Tx<USART1>
   }
 
   #[local]
   struct LocalResources {
     button: PC13<Input>,
     led: PE3<Output<PushPull>>,
-    // tx: Tx<USART1>,
   }
-
-  /*
-  fn local_print() {
-    let dp = pac::Peripherals::take().unwrap();
-
-    let pwr = dp.PWR.constrain();
-    let pwrcfg =  pwr.freeze();
-
-    let rcc = dp.RCC.constrain();
-    let ccdr = rcc
-                  .sys_ck(100.MHz())
-                  .freeze(pwrcfg, &dp.SYSCFG);
-
-    let gpiob = dp.GPIOB.split(ccdr.peripheral.GPIOB);
-
-    let tx = gpiob.pb14.into_alternate();
-    let rx = gpiob.pb15.into_alternate();
-
-    let serial = dp
-                                  .USART1
-                                  .serial((tx, rx), 115200.bps(), ccdr.peripheral.USART1, &ccdr.clocks)
-                                  .unwrap();
-
-    let (mut tx, _) = serial.split();
-
-    writeln!(tx, "Hello, world!").unwrap();
-  }
-  */
 
   #[init]
   fn init(mut ctx: init::Context) -> (SharedResources, LocalResources) {
@@ -96,7 +68,7 @@ mod app {
 
     // GPIO
     let gpioc = ctx.device.GPIOC.split(ccdr.peripheral.GPIOC);
-
+    let gpiob = ctx.device.GPIOB.split(ccdr.peripheral.GPIOB);
     let gpioe = ctx.device.GPIOE.split(ccdr.peripheral.GPIOE);
 
     // https://github.com/mygnu/rregatta-firmware/blob/main/src/main.rs#L64
@@ -108,10 +80,21 @@ mod app {
     // local_print();
     // hprintln!("D - fsdfsdfsdfsdfsdf f dfdf");
 
-    // let mut mono = Systick::new(ctx.core.SYST, 32_000_000);
+    let tx = gpiob.pb14.into_alternate();
+    let rx = gpiob.pb15.into_alternate();
+
+    let serial = ctx.device
+                                    .USART1
+                                    .serial((tx, rx), 115200.bps(), ccdr.peripheral.USART1, &ccdr.clocks)
+                                    .unwrap();
+
+    let (mut tx, _) = serial.split();
+
+    writeln!(tx, "Hello, world!").unwrap();
 
     (
       SharedResources {
+        tx
       },
       LocalResources {
         button,
@@ -138,7 +121,7 @@ mod app {
     ctx.local.button.clear_interrupt_pending_bit();
   }
 
-  #[idle(local = [x: u32 = 0])]
+  #[idle(local = [x: u32 = 0], shared = [tx])]
   fn idle(_cx: idle::Context) -> ! {
     // Locals in idle have lifetime 'static
     let _x: &'static mut u32 = _cx.local.x;
@@ -151,10 +134,14 @@ mod app {
       cortex_m::asm::nop();
     }
   }
-  
-  #[task(priority = 1)]
-  async fn foo(_: foo::Context) {
+
+  #[task(priority = 1, shared=[tx])]
+  async fn foo(mut cx: foo::Context) {
     // local_print();
+
+    cx.shared.tx.lock(|tx| {
+      writeln!(tx, "Fofoofofof").unwrap();
+    });
 
     // hprintln!("Fooooo odofodfodofdofodfo");
   }
